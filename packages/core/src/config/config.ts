@@ -117,6 +117,10 @@ import {
 } from '../services/modelConfigService.js';
 import { DEFAULT_MODEL_CONFIGS } from './defaultModelConfigs.js';
 import { ContextManager } from '../context/contextManager.js';
+import {
+  type ContextCompressionConfig,
+  DEFAULT_CONTEXT_COMPRESSION_CONFIG,
+} from '../context/contextCompressionService.js';
 import { TrackerService } from '../services/trackerService.js';
 import type { GenerateContentParameters } from '@google/genai';
 
@@ -701,6 +705,7 @@ export interface ConfigParameters {
   enableHooksUI?: boolean;
   experiments?: Experiments;
   contextManagement?: Partial<ContextManagementConfig>;
+  contextCompression?: Partial<ContextCompressionConfig>;
   hooks?: { [K in HookEventName]?: HookDefinition[] };
   disabledHooks?: string[];
   projectHooks?: { [K in HookEventName]?: HookDefinition[] };
@@ -960,6 +965,7 @@ export class Config implements McpContext, AgentLoopContext {
   private readonly modelSteering: boolean;
   private contextManager?: ContextManager;
   private readonly contextManagement: ContextManagementConfig;
+  private readonly contextCompressionConfig: ContextCompressionConfig;
   private terminalBackground: string | undefined = undefined;
   private remoteAdminSettings: AdminControlsSettings | undefined;
   private latestApiRequest: GenerateContentParameters | undefined;
@@ -1192,6 +1198,14 @@ export class Config implements McpContext, AgentLoopContext {
             DEFAULT_PROTECT_LATEST_TURN,
         },
       },
+    };
+    this.contextCompressionConfig = {
+      enabled:
+        params.contextCompression?.enabled ??
+        DEFAULT_CONTEXT_COMPRESSION_CONFIG.enabled,
+      threshold:
+        params.contextCompression?.threshold ??
+        DEFAULT_CONTEXT_COMPRESSION_CONFIG.threshold,
     };
     this.topicUpdateNarration = params.topicUpdateNarration ?? false;
     this.modelSteering = params.modelSteering ?? false;
@@ -2405,6 +2419,10 @@ export class Config implements McpContext, AgentLoopContext {
 
   getContextManagementConfig(): ContextManagementConfig {
     return this.contextManagement;
+  }
+
+  getContextCompressionConfig(): ContextCompressionConfig {
+    return this.contextCompressionConfig;
   }
 
   get agentHistoryProviderConfig(): AgentHistoryProviderConfig {

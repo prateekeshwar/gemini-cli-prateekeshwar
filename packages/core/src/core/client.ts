@@ -44,6 +44,7 @@ import type {
 import type { ContentGenerator } from './contentGenerator.js';
 import { LoopDetectionService } from '../services/loopDetectionService.js';
 import { ChatCompressionService } from '../context/chatCompressionService.js';
+import { ContextCompressionService } from '../context/contextCompressionService.js';
 import { AgentHistoryProvider } from '../context/agentHistoryProvider.js';
 import { ideContextStore } from '../ide/ideContext.js';
 import {
@@ -95,6 +96,7 @@ export class GeminiClient {
 
   private readonly loopDetector: LoopDetectionService;
   private readonly compressionService: ChatCompressionService;
+  private readonly contextCompressionService: ContextCompressionService;
   private readonly agentHistoryProvider: AgentHistoryProvider;
   private readonly toolOutputMaskingService: ToolOutputMaskingService;
   private lastPromptId: string;
@@ -111,6 +113,9 @@ export class GeminiClient {
   constructor(private readonly context: AgentLoopContext) {
     this.loopDetector = new LoopDetectionService(this.config);
     this.compressionService = new ChatCompressionService();
+    this.contextCompressionService = new ContextCompressionService(
+      this.config.getContextCompressionConfig(),
+    );
     this.agentHistoryProvider = new AgentHistoryProvider(
       this.config.agentHistoryProviderConfig,
       this.config,
@@ -622,6 +627,17 @@ export class GeminiClient {
       );
       if (newHistory.length !== this.getHistory().length) {
         this.getChat().setHistory(newHistory);
+      }
+    } else if (this.config.getContextCompressionConfig().enabled) {
+      // ContextCompressionService: monitor token count and auto-compress
+      // when approaching the configurable threshold of the model limit.
+      const ctxResult = await this.tryContextCompression(
+        prompt_id,
+        modelForLimitCheck,
+        signal,
+      );
+      if (ctxResult.compressionStatus === CompressionStatus.COMPRESSED) {
+        yield { type: GeminiEventType.ChatCompressed, value: ctxResult };
       }
     } else {
       const compressed = await this.tryCompressChat(prompt_id, false, signal);
@@ -1221,6 +1237,56 @@ export class GeminiClient {
         this.updateTelemetryTokenCount();
         // We don't reset the chat session fully like in COMPRESSED because
         // this is a lighter-weight intervention.
+      }
+    }
+
+    return info;
+  }
+
+  /**
+   * Evaluates and compresses the context using the ContextCompressionService.
+   * Called when contextCompression is enabled in settings.
+   */
+  private async tryContextCompression(
+    prompt_id: string,
+    model: string,
+    abortSignal?: AbortSignal,
+  ): Promise<ChatCompressionInfo> {
+    const { newHistory, info } =
+      await this.contextCompressionService.evaluate(
+        this.getChat(),
+        prompt_id,
+        model,
+        this.config,
+        this.hasFailedCompressionAttempt,
+        abortSignal,
+      );
+
+    if (
+      info.compressionStatus ===
+      CompressionStatus.COMPRESSION_FAILED_INFLATED_TOKEN_COUNT
+    ) {
+      this.hasFailedCompressionAttempt = true;
+    } else if (info.compressionStatus === CompressionStatus.COMPRESSED) {
+      if (newHistory) {
+        const currentRecordingService =
+          this.getChat().getChatRecordingService();
+        const conversation = currentRecordingService.getConversation();
+        const filePath = currentRecordingService.getConversationFilePath();
+
+        let resumedData: ResumedSessionData | undefined;
+        if (conversation && filePath) {
+          resumedData = { conversation, filePath };
+        }
+
+        this.chat = await this.startChat(newHistory, resumedData);
+        this.updateTelemetryTokenCount();
+        this.forceFullIdeContext = true;
+      }
+    } else if (info.compressionStatus === CompressionStatus.CONTENT_TRUNCATED) {
+      if (newHistory) {
+        this.getChat().setHistory(newHistory);
+        this.updateTelemetryTokenCount();
       }
     }
 

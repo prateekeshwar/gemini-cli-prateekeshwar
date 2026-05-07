@@ -643,6 +643,32 @@
           "markdownDescription": "Skip the next speaker check.\n\n- Category: `Model`\n- Requires restart: `no`\n- Default: `true`",
           "default": true,
           "type": "boolean"
+        },
+        "contextCompression": {
+          "title": "Context Compression",
+          "description": "Automatic context compression settings. When enabled, monitors token usage and compresses older turns when approaching the model's token limit.",
+          "markdownDescription": "Automatic context compression settings. When enabled, monitors token usage and compresses older turns when approaching the model's token limit.\n\n- Category: `Model`\n- Requires restart: `yes`\n- Default: `{}`",
+          "default": {},
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "title": "Enable Context Compression",
+              "description": "Enable automatic context compression when token usage approaches the model limit.",
+              "markdownDescription": "Enable automatic context compression when token usage approaches the model limit.\n\n- Category: `Model`\n- Requires restart: `yes`\n- Default: `false`",
+              "default": false,
+              "type": "boolean"
+            },
+            "threshold": {
+              "title": "Context Compression Threshold",
+              "description": "Fraction of the model's token limit at which automatic compression triggers (0.0–1.0).",
+              "markdownDescription": "Fraction of the model's token limit at which automatic compression triggers (0.0\u20131.0).\n\n- Category: `Model`\n- Requires restart: `yes`\n- Default: `0.8`",
+              "default": 0.8,
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false

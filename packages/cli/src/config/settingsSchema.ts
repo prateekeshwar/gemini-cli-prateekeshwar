@@ -1019,6 +1019,41 @@ const SETTINGS_SCHEMA = {
         description: 'Skip the next speaker check.',
         showInDialog: true,
       },
+      contextCompression: {
+        type: 'object',
+        label: 'Context Compression',
+        category: 'Model',
+        requiresRestart: true,
+        default: {} as {
+          enabled?: boolean;
+          threshold?: number;
+        },
+        description:
+          'Automatic context compression settings. When enabled, monitors token usage and compresses older turns when approaching the model token limit.',
+        showInDialog: true,
+        properties: {
+          enabled: {
+            type: 'boolean',
+            label: 'Enable Context Compression',
+            category: 'Model',
+            requiresRestart: true,
+            default: false,
+            description:
+              'Enable automatic context compression when token usage approaches the model limit.',
+            showInDialog: true,
+          },
+          threshold: {
+            type: 'number',
+            label: 'Context Compression Threshold',
+            category: 'Model',
+            requiresRestart: true,
+            default: 0.8 as number,
+            description:
+              'Fraction of the model token limit at which automatic compression triggers (0.0–1.0).',
+            showInDialog: true,
+          },
+        },
+      },
     },
   },
 

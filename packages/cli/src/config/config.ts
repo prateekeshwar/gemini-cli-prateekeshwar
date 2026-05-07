@@ -988,6 +988,7 @@ export async function loadCliConfig(
     ideMode,
     disableLoopDetection: settings.model?.disableLoopDetection,
     compressionThreshold: settings.model?.compressionThreshold,
+    contextCompression: settings.model?.contextCompression,
     folderTrust,
     interactive,
     trustedFolder,
